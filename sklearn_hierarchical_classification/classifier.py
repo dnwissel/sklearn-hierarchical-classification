@@ -38,7 +38,10 @@ from sklearn_hierarchical_classification.constants import (
 from sklearn_hierarchical_classification.decorators import logger
 from sklearn_hierarchical_classification.dummy import DummyProgress
 from sklearn_hierarchical_classification.graph import make_flat_hierarchy, rollup_nodes
-from sklearn_hierarchical_classification.validation import is_estimator, validate_parameters
+from sklearn_hierarchical_classification.validation import (
+    is_estimator,
+    validate_parameters,
+)
 
 
 @logger
@@ -177,7 +180,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
         progress_wrapper=None,
         feature_extraction="preprocessed",
         mlb=None,
-        mlb_prediction_threshold=0.,
+        mlb_prediction_threshold=0.0,
         use_decision_function=False,
     ):
         self.base_estimator = base_estimator
@@ -238,23 +241,29 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
         self._check_parameters()
 
         # Initialize NetworkX Graph from input class hierarchy
-        self.class_hierarchy_ = self.class_hierarchy or make_flat_hierarchy(list(np.unique(y)), root=self.root)
+        self.class_hierarchy_ = self.class_hierarchy or make_flat_hierarchy(
+            list(np.unique(y)), root=self.root
+        )
         self.graph_ = DiGraph(self.class_hierarchy_)
         self.is_tree_ = is_tree(self.graph_)
-        self.classes_ = list(
-            node
-            for node in self.graph_.nodes()
-            if node != self.root
-        )
+        self.classes_ = list(node for node in self.graph_.nodes() if node != self.root)
 
         if self.feature_extraction == "preprocessed":
             # When not in raw mode, recursively build training feature sets for each node in graph
-            with self._progress(total=self.n_classes_ + 1, desc="Building features") as progress:
-                self._recursive_build_features(X, y, node_id=self.root, progress=progress)
+            with self._progress(
+                total=self.n_classes_ + 1, desc="Building features"
+            ) as progress:
+                self._recursive_build_features(
+                    X, y, node_id=self.root, progress=progress
+                )
 
         # Recursively train base classifiers
-        with self._progress(total=self.n_classes_ + 1, desc="Training base classifiers") as progress:
-            self._recursive_train_local_classifiers(X, y, node_id=self.root, progress=progress)
+        with self._progress(
+            total=self.n_classes_ + 1, desc="Training base classifiers"
+        ) as progress:
+            self._recursive_train_local_classifiers(
+                X, y, node_id=self.root, progress=progress
+            )
 
         return self
 
@@ -282,10 +291,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
                 return path[-1]
 
         if self.feature_extraction == "raw":
-            return np.array([
-                _classify(X[i])
-                for i in range(len(X))
-            ])
+            return np.array([_classify(X[i]) for i in range(len(X))])
         else:
             X = check_array(X, accept_sparse="csr")
 
@@ -314,10 +320,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
             return scores
 
         if self.feature_extraction == "raw":
-            return np.array([
-                _classify(X[i])
-                for i in range(len(X))
-            ])
+            return np.array([_classify(X[i]) for i in range(len(X))])
         else:
             X = check_array(X, accept_sparse="csr")
 
@@ -370,13 +373,12 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
             )
 
         for child_node_id in self.graph_.successors(node_id):
-            self.graph_.nodes[node_id]["X"] += \
-                self._recursive_build_features(
-                    X=X,
-                    y=y,
-                    node_id=child_node_id,
-                    progress=progress,
-                )
+            self.graph_.nodes[node_id]["X"] += self._recursive_build_features(
+                X=X,
+                y=y,
+                node_id=child_node_id,
+                progress=progress,
+            )
 
         # Build and store metafeatures for node
         self.graph_.nodes[node_id][METAFEATURES] = self._build_metafeatures(
@@ -498,7 +500,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
             graph=self.graph_,
             source=node_id,
             targets=[y[idx] for idx in nnz_rows],
-            mlb=self.mlb
+            mlb=self.mlb,
         )
 
         if self.is_tree_:
@@ -554,7 +556,13 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
 
         if self.feature_extraction == "raw":
             if len(X_) > 0:
-                clf.fit(X=X_, y=y_)
+                if num_targets == 1:
+                    clf.fit(
+                        X=np.concatenate(X_, np.zeros((1, X_.shape[1]))),
+                        y=np.concatenate(y_, np.array([y_[0] + 1])),
+                    )
+                else:
+                    clf.fit(X=X_, y=y_)
                 self.logger.debug(
                     "_train_local_classifier() - training node %s ",  # noqa:E501
                     node_id,
@@ -666,10 +674,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
             # Prediction depth parameter does not allow for early termination
             return False
 
-        if (
-            isinstance(self.stopping_criteria, float)
-            and score < self.stopping_criteria
-        ):
+        if isinstance(self.stopping_criteria, float) and score < self.stopping_criteria:
             if current_node == self.root:
                 return False
 
