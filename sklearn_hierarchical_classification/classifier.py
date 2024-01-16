@@ -561,7 +561,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
                     print(len(y_))
                     print(y_[0].shape)
                     clf.fit(
-                        X=np.concatenate(X_, np.zeros((1, X_[0].shape[0]))),
+                        X=X_ + [np.zeros((X_[0].shape[0],))],
                         y=np.concatenate(y_, np.array([y_[0] + 1])),
                     )
                 else:
