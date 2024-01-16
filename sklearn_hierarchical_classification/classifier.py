@@ -559,7 +559,7 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
                 if num_targets == 1:
                     print(len(X_))
                     print(len(y_))
-                    print(y_[0].shape)
+                    # print(y_[0].shape)
                     clf.fit(
                         X=X_ + [np.zeros((X_[0].shape[0],))],
                         y=np.concatenate(y_, np.array([y_[0] + 1])),
