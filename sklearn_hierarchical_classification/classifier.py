@@ -557,9 +557,8 @@ class HierarchicalClassifier(BaseEstimator, ClassifierMixin, MetaEstimatorMixin)
         if self.feature_extraction == "raw":
             if len(X_) > 0:
                 if num_targets == 1:
-                    print(X_[0].shape)
                     clf.fit(
-                        X=np.concatenate(X_, np.zeros((1, X_.shape[1]))),
+                        X=np.concatenate(X_, np.zeros((1, X_[0].shape[0]))),
                         y=np.concatenate(y_, np.array([y_[0] + 1])),
                     )
                 else:
